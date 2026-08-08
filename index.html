@@ -189,8 +189,8 @@
   }
 
   async function onScanSuccess(decodedText) {
-    const value = String(decodedText || "").trim();
-
+    const value = String(decodedText || "").trim().toUpperCase();
+console.log("QR SCAN VALUE =", JSON.stringify(value));
     // एक ही QR बार-बार पढ़ने से बचाएँ
     if (!value || value === lastScanned) return;
     lastScanned = value;
