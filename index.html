@@ -357,23 +357,79 @@ async function startScanner() {
     document.getElementById("stopBtn").classList.add("hidden");
     setStatus("कैमरा बंद है।");
   }
-  function prepareCollection() {
+  async function prepareCollection() {
 
     const memberId =
-        document.getElementById("cMemberId").textContent;
+        document.getElementById("cMemberId").textContent.trim();
 
     const name =
-        document.getElementById("cName").textContent;
+        document.getElementById("cName").textContent.trim();
 
-    document.getElementById("collectionStatus").textContent =
-        "✅ संग्रह तैयार: " + memberId + " | " + name + " | ₹20 | 1 Kg";
+    if (!memberId || memberId === "-") {
+        setStatus("❌ पहले ग्रामवासी का QR स्कैन करें", "err");
+        return;
+    }
 
-    console.log("Collection Ready:", {
+    // आज की तारीख
+    const today = new Date();
+    const collectionDate =
+        today.getFullYear() + "-" +
+        String(today.getMonth() + 1).padStart(2, "0") + "-" +
+        String(today.getDate()).padStart(2, "0");
+
+    // Unique Receipt No.
+    const receiptNo =
+        "RC-" +
+        today.getFullYear() +
+        String(today.getMonth() + 1).padStart(2, "0") +
+        String(today.getDate()).padStart(2, "0") +
+        "-" +
+        String(today.getHours()).padStart(2, "0") +
+        String(today.getMinutes()).padStart(2, "0") +
+        String(today.getSeconds()).padStart(2, "0");
+
+    const collectionData = {
         member_id: memberId,
         name: name,
+        collection_date: collectionDate,
         amount: 20,
-        rice_kg: 1
-    });
+        rice_kg: 1,
+        receipt_no: receiptNo,
+        collector: "QR Scanner",
+        remarks: "QR द्वारा संग्रह"
+    };
+
+    console.log("Collection Saving:", collectionData);
+
+    document.getElementById("collectionStatus").textContent =
+        "⏳ संग्रह Database में सेव हो रहा है...";
+
+    try {
+
+        const { data, error } = await db
+            .from("collections")
+            .insert([collectionData])
+            .select();
+
+        if (error) {
+            throw error;
+        }
+
+        console.log("Collection Saved:", data);
+
+        document.getElementById("collectionStatus").textContent =
+            "✅ संग्रह सफलतापूर्वक सेव हुआ | " +
+            receiptNo +
+            " | ₹20 | 1 Kg";
+
+    } catch (error) {
+
+        console.error("Collection Save Error:", error);
+
+        document.getElementById("collectionStatus").textContent =
+            "❌ संग्रह सेव नहीं हुआ: " +
+            (error.message || error);
+    }
 }
 </script>
 
