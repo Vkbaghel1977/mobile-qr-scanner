@@ -127,7 +127,43 @@
   </div>
 
 </div>
+<!-- Collection Entry -->
+<div id="collectionCard" class="card hidden">
 
+  <h2 style="margin-top:0">💰 संग्रह दर्ज करें</h2>
+
+  <div class="row">
+    <span class="label">सदस्य ID</span>
+    <span class="value" id="cMemberId">-</span>
+  </div>
+
+  <div class="row">
+    <span class="label">नाम</span>
+    <span class="value" id="cName">-</span>
+  </div>
+
+  <div class="row">
+    <span class="label">संग्रह राशि</span>
+    <span class="value">₹20</span>
+  </div>
+
+  <div class="row">
+    <span class="label">चावल</span>
+    <span class="value">1 Kg</span>
+  </div>
+
+  <button id="collectionBtn"
+          class="primary"
+          onclick="prepareCollection()">
+    💰 संग्रह दर्ज करें
+  </button>
+
+  <div id="collectionStatus"
+       class="status"
+       style="margin-top:10px">
+  </div>
+
+</div>
 <script>
   const SUPABASE_URL = "https://gaypbxebfzbbuvdojnld.supabase.co";
   const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_n646mD5jFh6lIlx351YIlw_RSAqqGUp";
@@ -321,6 +357,24 @@ async function startScanner() {
     document.getElementById("stopBtn").classList.add("hidden");
     setStatus("कैमरा बंद है।");
   }
+  function prepareCollection() {
+
+    const memberId =
+        document.getElementById("cMemberId").textContent;
+
+    const name =
+        document.getElementById("cName").textContent;
+
+    document.getElementById("collectionStatus").textContent =
+        "✅ संग्रह तैयार: " + memberId + " | " + name + " | ₹20 | 1 Kg";
+
+    console.log("Collection Ready:", {
+        member_id: memberId,
+        name: name,
+        amount: 20,
+        rice_kg: 1
+    });
+}
 </script>
 
 </body>
