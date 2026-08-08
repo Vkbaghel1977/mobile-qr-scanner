@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ग्राम समिति - मोबाइल QR Scanner</title>
+
+  <!-- Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- QR Scanner -->
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
+  <style>
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Arial,"Noto Sans Devanagari",sans-serif;
+      background:#f4f7fb;
+      color:#172033;
+    }
+    .wrap{max-width:520px;margin:auto;padding:18px}
+    .card{
+      background:#fff;border-radius:18px;padding:20px;
+      box-shadow:0 8px 28px rgba(0,0,0,.08);
+      margin-bottom:16px;
+    }
+    h1{font-size:22px;margin:0 0 6px}
+    .sub{color:#667085;font-size:14px;margin-bottom:18px}
+    #reader{
+      width:100%;
+      overflow:hidden;
+      border-radius:14px;
+      background:#111;
+    }
+    button{
+      width:100%;border:0;border-radius:12px;padding:13px 16px;
+      font-size:16px;font-weight:700;cursor:pointer;margin-top:12px;
+    }
+    .primary{background:#0b7a4b;color:#fff}
+    .secondary{background:#eaf2ff;color:#164b9b}
+    .danger{background:#feecec;color:#a61b1b}
+    .status{
+      padding:11px 13px;border-radius:10px;background:#f2f4f7;
+      margin-top:12px;font-size:14px;
+    }
+    .ok{background:#e9f8ef;color:#17663d}
+    .err{background:#fff0f0;color:#a61b1b}
+    .row{
+      display:flex;justify-content:space-between;gap:14px;
+      padding:11px 0;border-bottom:1px solid #eee;
+    }
+    .row:last-child{border-bottom:0}
+    .label{color:#667085;font-size:13px}
+    .value{font-weight:700;text-align:right}
+    .hidden{display:none}
+    input{
+      width:100%;padding:12px;border:1px solid #d0d5dd;
+      border-radius:10px;font-size:16px;
+    }
+    .small{font-size:12px;color:#667085;line-height:1.5}
+  </style>
+</head>
+
+<body>
+<div class="wrap">
+
+  <div class="card">
+    <h1>📱 सदस्य QR Scanner</h1>
+    <div class="sub">ग्राम सामूहिक शोक सहायता एवं सहयोग समिति</div>
+
+    <div id="reader"></div>
+
+    <div id="status" class="status">
+      कैमरा शुरू करने के लिए नीचे बटन दबाएँ।
+    </div>
+
+    <button id="startBtn" class="primary" onclick="startScanner()">
+      📷 कैमरा शुरू करें
+    </button>
+
+    <button id="stopBtn" class="danger hidden" onclick="stopScanner()">
+      ⏹️ स्कैनर बंद करें
+    </button>
+  </div>
+
+  <div class="card">
+    <h3>🔎 QR Code हाथ से जाँचें</h3>
+    <input id="manualQr" placeholder="उदाहरण: SM-0001">
+    <button class="secondary" onclick="findMember(document.getElementById('manualQr').value)">
+      सदस्य खोजें
+    </button>
+    <div class="small" style="margin-top:8px">
+      यह विकल्प कैमरा उपलब्ध न होने पर परीक्षण के लिए है।
+    </div>
+  </div>
+
+  <div id="memberCard" class="card hidden">
+    <h2 style="margin-top:0">👤 सदस्य जानकारी</h2>
+
+    <div class="row">
+      <span class="label">सदस्य ID</span>
+      <span class="value" id="mId">-</span>
+    </div>
+    <div class="row">
+      <span class="label">नाम</span>
+      <span class="value" id="mName">-</span>
+    </div>
+    <div class="row">
+      <span class="label">पिता/पति</span>
+      <span class="value" id="mFather">-</span>
+    </div>
+    <div class="row">
+      <span class="label">ग्राम</span>
+      <span class="value" id="mVillage">-</span>
+    </div>
+    <div class="row">
+      <span class="label">मोबाइल</span>
+      <span class="value" id="mMobile">-</span>
+    </div>
+    <div class="row">
+      <span class="label">स्थिति</span>
+      <span class="value" id="mStatus">-</span>
+    </div>
+  </div>
+
+  <div class="card small">
+    <b>Phase 1:</b> यह पेज QR से सदस्य ID पढ़कर Supabase Online Database में सदस्य खोजता है।
+    अभी ₹20/1 Kg संग्रह सेव नहीं किया जा रहा है।
+  </div>
+
+</div>
+
+<script>
+  const SUPABASE_URL = "https://gaypbxebfzbbuvdojnld.supabase.co";
+  const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_n646mD5jFh6lIlx351YIlw_RSAqqGUp";
+
+  const { createClient } = supabase;
+  const db = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+  let scanner = null;
+  let scannerRunning = false;
+  let lastScanned = "";
+
+  function setStatus(message, type="") {
+    const el = document.getElementById("status");
+    el.textContent = message;
+    el.className = "status " + type;
+  }
+
+  function showMember(member) {
+    document.getElementById("memberCard").classList.remove("hidden");
+    document.getElementById("mId").textContent = member.member_id || "-";
+    document.getElementById("mName").textContent = member.name || "-";
+    document.getElementById("mFather").textContent = member.father_husband || "-";
+    document.getElementById("mVillage").textContent = member.village || "-";
+    document.getElementById("mMobile").textContent = member.mobile || "-";
+    document.getElementById("mStatus").textContent = member.status || "-";
+  }
+
+  async function findMember(qrValue) {
+    const qr = String(qrValue || "").trim();
+    if (!qr) {
+      setStatus("कृपया QR Code / Member ID डालें।", "err");
+      return;
+    }
+
+    setStatus("☁️ Online Database में सदस्य खोज रहे हैं...");
+
+    try {
+      const { data, error } = await db
+        .from("members")
+        .select("member_id,name,father_husband,village,mobile,qr_code,status")
+        .eq("qr_code", qr)
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (!data) {
+        setStatus("❌ यह QR Code Database में नहीं मिला: " + qr, "err");
+        document.getElementById("memberCard").classList.add("hidden");
+        return;
+      }
+
+      showMember(data);
+      setStatus("✅ सदस्य Online Database से मिल गया।", "ok");
+    } catch (err) {
+      console.error(err);
+      setStatus("❌ Database Error: " + (err.message || err), "err");
+    }
+  }
+
+  async function onScanSuccess(decodedText) {
+    const value = String(decodedText || "").trim();
+
+    // एक ही QR बार-बार पढ़ने से बचाएँ
+    if (!value || value === lastScanned) return;
+    lastScanned = value;
+
+    setStatus("✅ QR पढ़ लिया: " + value);
+    await findMember(value);
+
+    // थोड़ी देर बाद दोबारा वही QR पढ़ने की अनुमति
+    setTimeout(() => { lastScanned = ""; }, 3000);
+  }
+
+  function onScanFailure(errorMessage) {
+    // लगातार scan failures सामान्य हैं; UI पर नहीं दिखाते।
+  }
+
+  async function startScanner() {
+    if (scannerRunning) return;
+
+    try {
+      scanner = new Html5Qrcode("reader");
+
+      const config = {
+        fps: 10,
+        qrbox: { width: 250, height: 250 },
+        aspectRatio: 1.0
+      };
+
+      await scanner.start(
+        { facingMode: "environment" },
+        config,
+        onScanSuccess,
+        onScanFailure
+      );
+
+      scannerRunning = true;
+      document.getElementById("startBtn").classList.add("hidden");
+      document.getElementById("stopBtn").classList.remove("hidden");
+      setStatus("📷 कैमरा चालू है। QR Code सामने रखें।", "ok");
+    } catch (err) {
+      console.error(err);
+      setStatus(
+        "❌ कैमरा शुरू नहीं हुआ। Browser को Camera Permission दें और HTTPS वाली लिंक से पेज खोलें।",
+        "err"
+      );
+    }
+  }
+
+  async function stopScanner() {
+    if (!scanner || !scannerRunning) return;
+
+    try {
+      await scanner.stop();
+      await scanner.clear();
+    } catch (e) {
+      console.warn(e);
+    }
+
+    scannerRunning = false;
+    scanner = null;
+    document.getElementById("startBtn").classList.remove("hidden");
+    document.getElementById("stopBtn").classList.add("hidden");
+    setStatus("कैमरा बंद है।");
+  }
+</script>
+
+</body>
+</html>
