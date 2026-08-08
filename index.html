@@ -208,36 +208,64 @@
 
   async function startScanner() {
     if (scannerRunning) return;
+async function startScanner() {
+  if (scannerRunning) return;
 
-    try {
-      scanner = new Html5Qrcode("reader");
+  try {
+    setStatus("📷 कैमरा की अनुमति माँगी जा रही है...");
 
-      const config = {
-        fps: 10,
-        qrbox: { width: 250, height: 250 },
-        aspectRatio: 1.0
-      };
+    // Camera permission/check
+    const cameras = await Html5Qrcode.getCameras();
 
-      await scanner.start(
-        { facingMode: "environment" },
-        config,
-        onScanSuccess,
-        onScanFailure
-      );
-
-      scannerRunning = true;
-      document.getElementById("startBtn").classList.add("hidden");
-      document.getElementById("stopBtn").classList.remove("hidden");
-      setStatus("📷 कैमरा चालू है। QR Code सामने रखें।", "ok");
-    } catch (err) {
-      console.error(err);
-      setStatus(
-        "❌ कैमरा शुरू नहीं हुआ। Browser को Camera Permission दें और HTTPS वाली लिंक से पेज खोलें।",
-        "err"
-      );
+    if (!cameras || cameras.length === 0) {
+      throw new Error("कोई कैमरा उपलब्ध नहीं मिला।");
     }
-  }
 
+    // पहले पीछे वाला कैमरा खोजें
+    let cameraId = cameras[0].id;
+
+    const backCamera = cameras.find(camera =>
+      /back|rear|environment/i.test(camera.label || "")
+    );
+
+    if (backCamera) {
+      cameraId = backCamera.id;
+    }
+
+    scanner = new Html5Qrcode("reader");
+
+    const config = {
+      fps: 10,
+      qrbox: {
+        width: 250,
+        height: 250
+      },
+      aspectRatio: 1.0
+    };
+
+    await scanner.start(
+      cameraId,
+      config,
+      onScanSuccess,
+      onScanFailure
+    );
+
+    scannerRunning = true;
+
+    document.getElementById("startBtn").classList.add("hidden");
+    document.getElementById("stopBtn").classList.remove("hidden");
+
+    setStatus("🟢 कैमरा चालू है — QR Code सामने रखें", "ok");
+
+  } catch (err) {
+    console.error("Camera Error:", err);
+
+    setStatus(
+      "❌ कैमरा नहीं खुला। Camera Permission में Allow करें और Chrome में HTTPS लिंक खोलें।",
+      "err"
+    );
+  }
+}
   async function stopScanner() {
     if (!scanner || !scannerRunning) return;
 
