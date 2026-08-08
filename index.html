@@ -147,7 +147,7 @@
 
   function showMember(member) {
     document.getElementById("memberCard").classList.remove("hidden");
-    document.getElementById("mId").textContent = member.member_id || "-";
+    document.getElementById("mId").textContent = member.gram_id || "-";
     document.getElementById("mName").textContent = member.name || "-";
     document.getElementById("mFather").textContent = member.father_husband || "-";
     document.getElementById("mVillage").textContent = member.village || "-";
@@ -167,7 +167,7 @@
     try {
       const { data, error } = await db
         .from("gramwasi")
-        .select("member_id,name,father_husband,village,mobile,qr_code,status")
+        .select("gram_id,name,father_husband,village,mobile,qr_code,status")
         .eq("qr_code", qr)
         .limit(1)
         .maybeSingle();
