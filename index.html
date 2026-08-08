@@ -188,19 +188,59 @@
     }
   }
 
-  async function onScanSuccess(decodedText) {
-    const value = String(decodedText || "").trim().toUpperCase();
-console.log("QR SCAN VALUE =", JSON.stringify(value));
-    // एक ही QR बार-बार पढ़ने से बचाएँ
-    if (!value || value === lastScanned) return;
-    lastScanned = value;
+async function onScanSuccess(decodedText) {
 
-    setStatus("✅ QR पढ़ लिया: " + value);
-    await findMember(value);
+    try {
 
-    // थोड़ी देर बाद दोबारा वही QR पढ़ने की अनुमति
-    setTimeout(() => { lastScanned = ""; }, 3000);
-  }
+        const raw = String(decodedText || "").trim();
+
+        if (!raw) return;
+
+        // QR में JSON है तो उसमें से ID निकालें
+        let value = raw;
+
+        try {
+            const qrData = JSON.parse(raw);
+
+            value =
+                qrData.ID ||
+                qrData.id ||
+                qrData.gram_id ||
+                raw;
+
+        } catch (e) {
+            // यदि QR साधारण text है तो वही इस्तेमाल होगा
+            value = raw;
+        }
+
+        value = String(value).trim().toUpperCase();
+
+        console.log("QR RAW DATA =", raw);
+        console.log("QR MEMBER ID =", value);
+
+        if (!value || value === lastScanned) return;
+
+        lastScanned = value;
+
+        setStatus("✅ QR पढ़ लिया: " + value, "ok");
+
+        // अब केवल G-25/01 Database में खोजेगा
+        await findMember(value);
+
+        setTimeout(() => {
+            lastScanned = "";
+        }, 3000);
+
+    } catch (err) {
+
+        console.error("QR Processing Error:", err);
+
+        setStatus(
+            "❌ QR डेटा पढ़ने में समस्या: " + (err.message || err),
+            "err"
+        );
+    }
+}
 
   function onScanFailure(errorMessage) {
     // लगातार scan failures सामान्य हैं; UI पर नहीं दिखाते।
