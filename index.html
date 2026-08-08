@@ -166,7 +166,7 @@
 
     try {
       const { data, error } = await db
-        .from("members")
+        .from("gramwasi")
         .select("member_id,name,father_husband,village,mobile,qr_code,status")
         .eq("qr_code", qr)
         .limit(1)
