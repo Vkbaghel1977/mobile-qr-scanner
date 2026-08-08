@@ -189,6 +189,12 @@
     document.getElementById("mVillage").textContent = member.village || "-";
     document.getElementById("mMobile").textContent = member.mobile || "-";
     document.getElementById("mStatus").textContent = member.status || "-";
+       document.getElementById("collectionCard").classList.remove("hidden");
+    document.getElementById("cMemberId").textContent =
+        member.gram_id || member.member_id || "-";
+
+    document.getElementById("cName").textContent =
+        member.name || "-";
   }
 
   async function findMember(qrValue) {
